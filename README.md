@@ -10,3 +10,4 @@ Setup:
   - add test file to folder test4: userWithJourney.json (user doc with journey)
   - edit oplog_volume_test.js to include uri to MongoDB cluster
   - optionally edit oplog_volume_test.js to set batchSize and numBatches
+  - node oplog_volume_test.js
