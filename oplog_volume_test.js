@@ -1,6 +1,7 @@
 const { MongoClient } = require("mongodb");
 const { Binary } = require ('mongodb');
 const { BSON } = require ('mongodb')
+const { Document } = require ('mongodb')
 const zlib = require("zlib");
 const _ = require("lodash");
 var fs = require('fs');
@@ -69,6 +70,14 @@ async function runTest1(client, testdb, ns, coll, batchSize, numBatches) {
     const initDoc = JSON.parse(fs1)
     const replaceDoc = JSON.parse(fs2)
 
+    delete initDoc._id
+    delete replaceDoc._id
+
+    const initDocBsize = BSON.calculateObjectSize(initDoc);
+    const replaceDocBsize = BSON.calculateObjectSize(replaceDoc);
+    console.log("user doc without journey BSON size: " + initDocBsize);
+    console.log("user doc with journey BSON size: " + replaceDocBsize);
+
     const result = await client.db(testdb).collection(coll).insertOne(initDoc);
 
     // delay 2 seconds to avoid catching insert in OpLog summary
@@ -101,6 +110,11 @@ async function runTest2(client, testdb, ns, coll, batchSize, numBatches) {
     const fs1 = fs.readFileSync('./test2/userWithJourney.json','utf8');
     const userDoc = JSON.parse(fs1)
     const auth = userDoc.devices[0].session.auth_session
+
+    delete userDoc._id
+
+    const authBsize = BSON.calculateObjectSize(auth);
+    console.log("journey BSON size: " + authBsize);
 
     const result = await client.db(testdb).collection(coll).insertOne(userDoc);
 
@@ -135,6 +149,10 @@ async function runTest3(client, testdb, ns, coll, batchSize, numBatches) {
     const fs1 = fs.readFileSync('./test3/userWithJourney.json','utf8');
     const userDoc = JSON.parse(fs1)
     const auth = userDoc.devices[0].session.auth_session
+
+    delete userDoc._id
+
+    verify(auth)
 
     const result = await client.db(testdb).collection(coll).insertOne(userDoc);
  
@@ -174,6 +192,9 @@ async function runTest4(client, testdb, ns, coll, batchSize, numBatches) {
     const fs2 = fs.readFileSync('./test4/userWithJourney.json','utf8');
     let userDocWithoutAuth = JSON.parse(fs2)
 
+    delete userDoc._id
+    delete userDocWithoutAuth._id
+
     // prepare user doc (copy) without journey
     delete userDocWithoutAuth.devices[0].session.auth_session
 
@@ -182,6 +203,12 @@ async function runTest4(client, testdb, ns, coll, batchSize, numBatches) {
     const as = JSON.stringify(auth);
     const authCompressed = zlib.deflateSync(as);
     userDoc.devices[0].session.auth_session = new Binary(authCompressed)
+
+    const userWithoutAuthBsonSize = BSON.calculateObjectSize(userDocWithoutAuth);
+    console.log("user doc without journey BSON size: " + userWithoutAuthBsonSize);
+
+    const userWithAuthCompBsonSize = BSON.calculateObjectSize(userDoc);
+    console.log("user doc with journey compressed BSON size: " + userWithAuthCompBsonSize);
 
     const result = await client.db(testdb).collection(coll).insertOne(userDoc);
 
@@ -368,18 +395,20 @@ function verify(auth) {
     let as = JSON.stringify(auth);
     var asComp = zlib.deflateSync(as);
 
-    console.log(Buffer.isBuffer(asComp));
-    console.log(`input length ${as.length}`)  
-    console.log(`compressed bytes ${Buffer.byteLength(asComp)}`)
+    console.log(`zlib returns Buffer: ${Buffer.isBuffer(asComp)}`);
+    console.log(`stringified journey length ${as.length}`)  
+    console.log(`compressed journey bytes ${Buffer.byteLength(asComp)}`)
+
+    const authCompBsize = BSON.calculateObjectSize(new Binary(asComp));
+    console.log("compressed journey BSON size: " + authCompBsize);
 
     var asd = zlib.inflateSync(asComp);
 
-    console.log(`compressed bytes ${Buffer.byteLength(asComp)}`)
-    console.log(`uncompressed length ${asd.toString().length}`)
+    console.log(`uncompressed stringify journey length ${asd.toString().length}`)
     //console.log(buffer.toString('base64'));
 
     let auth2 = JSON.parse(asd)
-    console.log("check equality:" + _.isEqual(auth,auth2))
+    console.log("check equality before/after compress:" + _.isEqual(auth,auth2))
 }
 
 async function unsetAuth(client, targetId) {
