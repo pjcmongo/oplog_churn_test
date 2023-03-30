@@ -40,7 +40,7 @@ async function main() {
         await client.connect();
 
         // test1: replace entire user document 
-        await runTest1(client, testDb, t1Ns, t1Collection, batchSize, numBatches)
+        //await runTest1(client, testDb, t1Ns, t1Collection, batchSize, numBatches)
  
         // test2: $set/$unset journey (startDoc.devices[0].session.auth_session)
         await runTest2(client, testDb, t2Ns, t2Collection, batchSize, numBatches)
@@ -49,7 +49,7 @@ async function main() {
         await runTest3(client, testDb, t3Ns, t3Collection, batchSize, numBatches)
 
         // test4: replace entire user document with compressed journey (startDoc.devices[0].session.auth_session)
-        await runTest4(client, testDb, t4Ns, t4Collection, batchSize, numBatches)
+        //await runTest4(client, testDb, t4Ns, t4Collection, batchSize, numBatches)
 
     } finally {
         // Close the connection to the MongoDB cluster
@@ -122,13 +122,30 @@ async function runTest2(client, testdb, ns, coll, batchSize, numBatches) {
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     let ops = []
-    for(let n=0 ; n < batchSize ; ++n) {
-        ops.push(buildUnsetAuth(result.insertedId))
-        ops.push(buildSetAuth(auth, result.insertedId))
-    }  
+    //for(let n=0 ; n < batchSize ; ++n) {
+    //    ops.push(buildUnsetAuth(result.insertedId))
+    //    ops.push(buildSetAuth(auth, result.insertedId))
+    //}  
+    //const startTime = new Date()          
+    //console.log("test 2 start: " + startTime.toUTCString())
+    //await runTest(client, testdb, coll, ops, numBatches)
+    //const stopTime = new Date()
+    //console.log("\ntest 2 complete: " + stopTime.toUTCString())
+
+    // include batch build for each bulk operation
+    // more realistic from app perspective
     const startTime = new Date()          
     console.log("test 2 start: " + startTime.toUTCString())
-    await runTest(client, testdb, coll, ops, numBatches)
+    process.stdout.write("running");    
+    for(let x=0 ; x < numBatches ; ++x) {    
+        process.stdout.write(".");      
+        ops = []
+        for(let n=0 ; n < batchSize ; ++n) {
+            ops.push(buildUnsetAuth(result.insertedId))
+            ops.push(buildSetAuth(auth, result.insertedId))
+        }  
+        await client.db(testdb).collection(coll).bulkWrite(ops)
+    }
     const stopTime = new Date()
     console.log("\ntest 2 complete: " + stopTime.toUTCString())
 
@@ -160,15 +177,34 @@ async function runTest3(client, testdb, ns, coll, batchSize, numBatches) {
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     let ops = []
-    for(let n=0 ; n < batchSize ; ++n) {
-        ops.push(buildUnsetAuth(result.insertedId))
-        ops.push(buildSetAuthCompress(auth, result.insertedId))
-    }  
+    //for(let n=0 ; n < batchSize ; ++n) {
+    //    ops.push(buildUnsetAuth(result.insertedId))
+    //    ops.push(buildSetAuthCompress(auth, result.insertedId))
+    //}  
+    //const startTime = new Date()          
+    //console.log("test 3 start: " + startTime.toUTCString())
+    //await runTest(client, testdb, coll, ops, numBatches)
+    //const stopTime = new Date()
+    //console.log("\ntest 3 complete: " + stopTime.toUTCString())
+
+    // include batch build for each bulk operation
+    // more realistic from app perspective
     const startTime = new Date()          
     console.log("test 3 start: " + startTime.toUTCString())
-    await runTest(client, testdb, coll, ops, numBatches)
+    process.stdout.write("running");    
+    for(let x=0 ; x < numBatches ; ++x) {    
+        process.stdout.write(".");      
+        ops = []
+        for(let n=0 ; n < batchSize ; ++n) {
+            ops.push(buildUnsetAuth(result.insertedId))
+            ops.push(buildSetAuthCompress(auth, result.insertedId))
+        }  
+        await client.db(testdb).collection(coll).bulkWrite(ops)
+        const retAuth = await getAuthDecompressed(client, testdb, coll, result.insertedId)       
+    }
     const stopTime = new Date()
     console.log("\ntest 3 complete: " + stopTime.toUTCString())
+
 
     const opLogSummary = await getOplogSummary(client, startTime,stopTime)
     console.log("test3 results:")
