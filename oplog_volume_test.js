@@ -40,7 +40,7 @@ async function main() {
         await client.connect();
 
         // test1: replace entire user document 
-        //await runTest1(client, testDb, t1Ns, t1Collection, batchSize, numBatches)
+        await runTest1(client, testDb, t1Ns, t1Collection, batchSize, numBatches)
  
         // test2: $set/$unset journey (startDoc.devices[0].session.auth_session)
         await runTest2(client, testDb, t2Ns, t2Collection, batchSize, numBatches)
@@ -49,7 +49,7 @@ async function main() {
         await runTest3(client, testDb, t3Ns, t3Collection, batchSize, numBatches)
 
         // test4: replace entire user document with compressed journey (startDoc.devices[0].session.auth_session)
-        //await runTest4(client, testDb, t4Ns, t4Collection, batchSize, numBatches)
+        await runTest4(client, testDb, t4Ns, t4Collection, batchSize, numBatches)
 
     } finally {
         // Close the connection to the MongoDB cluster
